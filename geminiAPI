@@ -1,0 +1,115 @@
+import requests
+import json
+import google.generativeai as genai
+
+# API KEYS
+GOOGLE_MAPS_API_KEY = "AIzaSyA8pRHkAHz2Zj45d2bTFwIt3V0F1PR9kA8"
+GEMINI_API_KEY = "AIzaSyAlVaddDZPEljFsSzydrz7uKrGqo69Q1uU"
+
+# Initialize Gemini AI
+genai.configure(api_key=GEMINI_API_KEY)
+
+def get_coordinates(address):
+    """Fetch latitude and longitude for a given address."""
+    url = f"https://maps.googleapis.com/maps/api/geocode/json?address={address}&key={GOOGLE_MAPS_API_KEY}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        if data["status"] == "OK":
+            location = data["results"][0]["geometry"]["location"]
+            return location["lat"], location["lng"]
+    return None
+
+def get_route_data(origin, destination):
+    """Fetch transit route details from Google Maps API."""
+    origin_coords = get_coordinates(origin)
+    destination_coords = get_coordinates(destination)
+
+    if not origin_coords or not destination_coords:
+        return "Error fetching coordinates."
+
+    url = f"https://maps.googleapis.com/maps/api/directions/json?origin={origin_coords[0]},{origin_coords[1]}&destination={destination_coords[0]},{destination_coords[1]}&mode=transit&key={GOOGLE_MAPS_API_KEY}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        directions = response.json()
+        travel_data = []
+
+        if "routes" in directions and len(directions["routes"]) > 0:
+            route = directions["routes"][0]
+            for leg in route["legs"]:
+                for step_index, step in enumerate(leg["steps"]):
+                    if "transit_details" in step:
+                        transit = step["transit_details"]
+                        transit_info = {
+                            "mode": transit['line']['vehicle']['name'],
+                            "departure_stop": transit['departure_stop']['name'],
+                            "arrival_stop": transit['arrival_stop']['name'],
+                            "transit_distance": step['distance']['text']
+                        }
+                        
+                        # Walking before transit
+                        if step_index > 0 and 'walking' in leg['steps'][step_index - 1]['travel_mode'].lower():
+                            walking_before = leg['steps'][step_index - 1]
+                            transit_info["walking_before"] = f"{walking_before['distance']['text']} (Duration: {walking_before['duration']['text']})"
+                        
+                        # Walking after transit
+                        if step_index < len(leg['steps']) - 1 and 'walking' in leg['steps'][step_index + 1]['travel_mode'].lower():
+                            walking_after = leg['steps'][step_index + 1]
+                            transit_info["walking_after"] = f"{walking_after['distance']['text']} (Duration: {walking_after['duration']['text']})"
+                        
+                        travel_data.append(transit_info)
+
+        return get_ai_feedback(travel_data)
+    else:
+        return f"Error fetching route data: {response.status_code}"
+
+def get_ai_feedback(travel_data):
+    """Generates AI-based feedback using Gemini."""
+    
+    prompt = "Provide a detailed and insightful travel analysis based on the following transit data:\n\n"
+
+    for step in travel_data:
+        mode = step.get("mode", "Unknown Mode")
+        distance = step.get("transit_distance", "N/A")
+        walking_before = step.get("walking_before", "N/A")
+        walking_after = step.get("walking_after", "N/A")
+
+        prompt += f"🚍 Transit Mode: {mode}\n"
+        prompt += f"📏 Transit Distance: {distance}\n"
+        prompt += f"🛑 Departure: {step['departure_stop']} ➡️ Arrival: {step['arrival_stop']}\n"
+
+        if walking_before != "N/A":
+            prompt += f"🚶 Walking Before Transit: {walking_before}\n"
+
+        if walking_after != "N/A":
+            prompt += f"🚶 Walking After Transit: {walking_after}\n"
+        
+        prompt += "\n"
+
+    prompt += "Provide an overall assessment of user's journey, considering efficiency and environmental impact based on the kilogram of CO2 emitted from using the transportation modes. Do not include infrastructure recommendations for improvement but include how can the user emit less emission by providing alternative routes or modes of transportation. Also present the kg of co2 emitted using the modes of transportation in a clean format followed by the feedback"
+
+    # Call Gemini AI
+    model = genai.GenerativeModel("gemini-pro")
+    response = model.generate_content(prompt)
+
+    return response.text
+
+def main():
+    print("\n=== Transit Route Analysis ===")
+    print("Please enter the addresses for your journey:")
+    
+    # Get user input for addresses
+    origin_address = input("\nEnter origin address: ").strip()
+    destination_address = input("Enter destination address: ").strip()
+    
+    print("\nCalculating route and generating analysis...")
+    
+    # Get and display the route analysis
+    result = get_route_data(origin_address, destination_address)
+    print("\nAnalysis Results:")
+    print("=" * 50)
+    print(result)
+
+if __name__ == "__main__":
+    main()
