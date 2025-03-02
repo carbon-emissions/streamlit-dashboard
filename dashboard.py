@@ -4,6 +4,9 @@ from streamlit_folium import folium_static, st_folium
 import googlemaps
 import openai
 import math
+from folium.plugins import Geocoder
+from folium.plugins import LocateControl
+from geopy.geocoders import Nominatim
 
 # Set API keys (Replace with your actual keys)
 GOOGLE_MAPS_API_KEY = "AIzaSyA8pRHkAHz2Zj45d2bTFwIt3V0F1PR9kA8"
@@ -73,6 +76,11 @@ st.write("Enter or click on the map to set your start and end locations.")
 
 # Default map center at Vancouver
 vancouver_center = (49.2827, -123.1207)
+zoom_level = 12  
+
+# Default zoom level
+if 'zoom_level' not in st.session_state:
+    st.session_state.zoom_level = 12  
 
 # Initialize session state for start and end coordinates
 if "start_coords" not in st.session_state:
@@ -82,11 +90,12 @@ if "start_coords" not in st.session_state:
 if "end_coords" not in st.session_state:
     st.session_state["end_coords"] = None
     st.session_state["end_name"] = None
+    
 
 # UI for manual input of locations
 col1, col2 = st.columns(2)
 with col1:
-    start_address = st.text_input("Start Location (Enter Address or Click Map)")
+    start_address = st.text_input("Start Location (Enter Street Address or Click Map)")
     if st.button("Set Start"):
         coords = get_coordinates(start_address)
         if coords:
@@ -96,7 +105,7 @@ with col1:
             st.error("Could not find location. Try again.")
 
 with col2:
-    end_address = st.text_input("End Location (Enter Address or Click Map)")
+    end_address = st.text_input("End Location (Enter Street Address or Click Map)")
     if st.button("Set End"):
         coords = get_coordinates(end_address)
         if coords:
@@ -107,7 +116,7 @@ with col2:
 
 # Define the map
 m = folium.Map(location=vancouver_center, zoom_start=12)
-
+# folium.plugins.Geocoder().add_to(m)
 # Add markers if locations are selected
 if st.session_state["start_coords"]:
     folium.Marker(
@@ -124,7 +133,7 @@ if st.session_state["end_coords"]:
     ).add_to(m)
 
 # Clickable Map
-map_data = st_folium(m, height=500, width=800)
+map_data = st_folium(m, height=500, width=1400)
 
 # If a new point is clicked, update start or end point
 if map_data and map_data.get("last_clicked"):
@@ -150,6 +159,11 @@ with col2:
 
 # Select transport type
 transport_type = st.selectbox(":train2: Select Transport Type", list(TRANSPORT_TYPES.keys()))
+
+# Add a button to reset the zoom level
+if st.button('Reset Zoom'):
+    st.session_state.zoom_level = 12  # Reset zoom level
+    m.zoom_start = st.session_state.zoom_level
 
 # Button to calculate emissions
 if st.button("Calculate Emissions"):
@@ -177,6 +191,7 @@ if st.button("Calculate Emissions"):
         folium.Marker(start_coords, popup=f"Start: {st.session_state['start_name']}", icon=folium.Icon(color="green")).add_to(m)
         folium.Marker(end_coords, popup=f"End: {st.session_state['end_name']}", icon=folium.Icon(color="red")).add_to(m)
         folium.PolyLine([start_coords, end_coords], color="blue").add_to(m)
-        folium_static(m)
+        # Geocoder().add_to(m)
+        st_folium(m, height=700, width=1200)
     else:
         st.error("Please select both a start and end location on the map.")
