@@ -25,7 +25,7 @@ VEHICLE_TYPES = {
     "Seabus": 456
 }
 
-# vehicle types  & emission factors (g/km) -> ADD VALUES FROM MODEL
+# fuel types  # DO WE NEED THIS TO BE DICTIONARY?!
 FUEL_TYPES = {
     "Gasoline": 170,
     "Diesel": 128,
@@ -174,6 +174,9 @@ with col2:
 # Select vehicle type
 vehicle_type = st.selectbox(":train2: Select Vehicle Type", list(VEHICLE_TYPES.keys()))
 
+# Select vehicle type
+fuel_type = st.selectbox(":train2: Select Fuel Type", list(FUEL_TYPES.keys()))
+
 # Add a button to reset the zoom level
 if st.button('Reset Zoom'):
     st.session_state.zoom_level = 12  # Reset zoom level
@@ -188,7 +191,7 @@ if st.button("Calculate Emissions"):
         # Calculate distance using Haversine formula
         distance = haversine(start_coords[0], start_coords[1], end_coords[0], end_coords[1])
 
-        # Calculate emissions
+        # Calculate emissions # need to fix -> how are we recording the different emission rates?
         emission_factor = VEHICLE_TYPES[vehicle_type]
         emissions = (distance * emission_factor) / 1000  # Convert g to kg CO2
 
