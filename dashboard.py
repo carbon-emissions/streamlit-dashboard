@@ -15,11 +15,25 @@ OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
 # Initialize Google Maps API client
 gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 
-# Transport types & emission factors (g/km)
-TRANSPORT_TYPES = {
-    "Gas Car": 170,
-    "Electric Car": 128,
-    "Bus": 31,
+# vehicle types  & emission factors (g/km) -> ADD VALUES FROM MODEL
+VEHICLE_TYPES = {
+    "Passenger": 170,
+    "Minivan": 128,
+    "SUV": 31,
+    "Bus": 234,
+    "Skytrain": 123,
+    "Seabus": 456
+}
+
+# vehicle types  & emission factors (g/km) -> ADD VALUES FROM MODEL
+FUEL_TYPES = {
+    "Gasoline": 170,
+    "Diesel": 128,
+    "Natural Gas": 31,
+    "CH": 234,
+    "ZEV": 123,
+    "BEV": 456,
+    "PHEV": 93,
 }
 
 # Function to calculate Haversine distance (in km)
@@ -53,11 +67,11 @@ def get_place_name(lat, lon):
         return "Unknown Location"
 
 # Function to get AI feedback
-def get_ai_feedback(distance, emissions, transport_type):
+def get_ai_feedback(distance, emissions, vehicle_type):
     prompt = f"""
     Provide an assessment of this journey:
     - Distance: {distance:.2f} km
-    - Transport Type: {transport_type}
+    - Transport Type: {vehicle_type}
     - CO₂ Emissions: {emissions:.2f} kg CO₂
     
     Suggest alternative eco-friendly transport options if applicable.
@@ -157,8 +171,8 @@ with col2:
     if st.session_state["end_coords"]:
         st.success(f"End: {st.session_state['end_name']} ({st.session_state['end_coords']})")
 
-# Select transport type
-transport_type = st.selectbox(":train2: Select Transport Type", list(TRANSPORT_TYPES.keys()))
+# Select vehicle type
+vehicle_type = st.selectbox(":train2: Select Vehicle Type", list(VEHICLE_TYPES.keys()))
 
 # Add a button to reset the zoom level
 if st.button('Reset Zoom'):
@@ -175,11 +189,11 @@ if st.button("Calculate Emissions"):
         distance = haversine(start_coords[0], start_coords[1], end_coords[0], end_coords[1])
 
         # Calculate emissions
-        emission_factor = TRANSPORT_TYPES[transport_type]
+        emission_factor = VEHICLE_TYPES[vehicle_type]
         emissions = (distance * emission_factor) / 1000  # Convert g to kg CO2
 
         # AI-generated feedback
-        ai_feedback = get_ai_feedback(distance, emissions, transport_type)
+        ai_feedback = get_ai_feedback(distance, emissions, vehicle_type)
 
         # Display results
         st.success(f":straight_ruler: Distance: {distance:.2f} km")
