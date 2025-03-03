@@ -85,7 +85,7 @@ def get_ai_feedback(distance, emissions, vehicle_type):
 
 # Streamlit UI
 st.set_page_config(page_title="Emission Calculator", layout="wide")
-st.title(":car: Footprint Emission Calculator")
+st.title(":car: CO₂de Red")
 st.write("Enter or click on the map to set your start and end locations.")
 
 # Default map center at Vancouver
