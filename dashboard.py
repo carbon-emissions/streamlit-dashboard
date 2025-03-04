@@ -84,8 +84,12 @@ def get_ai_feedback(distance, emissions, vehicle_type):
     return response["choices"][0]["message"]["content"]
 
 # Streamlit UI
-st.set_page_config(page_title="Emission Calculator", layout="wide")
-st.title(":car: CO₂de Red")
+st.set_page_config(page_title="CO₂de Red", layout="wide")
+# st.title(":car: CO₂de Red")
+
+st.image("content/logo.png", use_container_width=False, width=75)  # Auto scales image
+st.markdown("<h1 style='text-align: center;'>CO₂de Red</h1>", unsafe_allow_html=True)
+
 st.write("Enter or click on the map to set your start and end locations.")
 
 # Default map center at Vancouver
