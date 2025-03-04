@@ -89,14 +89,18 @@ st.title(":car: CO₂de Red")
 st.write("Enter or click on the map to set your start and end locations.")
 
 # Default map center at Vancouver
-vancouver_center = (49.2827, -123.1207)
-zoom_level = 12  
+INITIAL_LAT = 49.2827
+INITIAL_LONG = -123.1207
+vancouver_center = (INITIAL_LAT, INITIAL_LONG)
+INITIAL_ZOOM = 12
 
 # Default zoom level
-if 'zoom_level' not in st.session_state:
-    st.session_state.zoom_level = 12  
+# if 'zoom_level' not in st.session_state:
 
-# Initialize session state for start and end coordinates
+# initialize session state and start and end coords
+if "map_center" not in st.session_state:
+    st.session_state.map_center = {"lat": INITIAL_LAT, "lon": INITIAL_LONG, "zoom": INITIAL_LONG}
+
 if "start_coords" not in st.session_state:
     st.session_state["start_coords"] = None
     st.session_state["start_name"] = None
@@ -105,6 +109,9 @@ if "end_coords" not in st.session_state:
     st.session_state["end_coords"] = None
     st.session_state["end_name"] = None
     
+# function to reset zoom and center
+def reset_map():
+    st.session_state.map_center = {"lat": INITIAL_LAT, "lon": INITIAL_LONG, "zoom": INITIAL_LONG}
 
 # UI for manual input of locations
 col1, col2 = st.columns(2)
@@ -129,9 +136,12 @@ with col2:
             st.error("Could not find location. Try again.")
 
 # Define the map
-m = folium.Map(location=vancouver_center, zoom_start=12)
+# m = folium.Map(location=vancouver_center, zoom_start=12)
 # folium.plugins.Geocoder().add_to(m)
-# Add markers if locations are selected
+
+# Create map and add markers if locations are selected
+m = folium.Map(location=vancouver_center, zoom_start=INITIAL_ZOOM)
+
 if st.session_state["start_coords"]:
     folium.Marker(
         st.session_state["start_coords"],
@@ -174,13 +184,15 @@ with col2:
 # Select vehicle type
 vehicle_type = st.selectbox(":train2: Select Vehicle Type", list(VEHICLE_TYPES.keys()))
 
-# Select vehicle type
-fuel_type = st.selectbox(":train2: Select Fuel Type", list(FUEL_TYPES.keys()))
+# Only show fuel type if NOT using public transport
+if vehicle_type not in ["Skytrain", "Bus", "Seabus"]:
+    fuel_type = st.radio(":fuelpump: Select Fuel Type", list(FUEL_TYPES.keys()), horizontal=True)
+else:
+    fuel_type = None  # Fuel type is not needed for public transport
 
 # Add a button to reset the zoom level
-if st.button('Reset Zoom'):
-    st.session_state.zoom_level = 12  # Reset zoom level
-    m.zoom_start = st.session_state.zoom_level
+st.button("Reset Zoom", on_click=reset_map)
+
 
 # Button to calculate emissions
 if st.button("Calculate Emissions"):
@@ -204,7 +216,7 @@ if st.button("Calculate Emissions"):
         st.info(f":robot_face: AI Feedback: {ai_feedback}")
 
         # Update map with route
-        m = folium.Map(location=start_coords, zoom_start=12)
+        m = folium.Map(location=start_coords, zoom_start=INITIAL_ZOOM)
         folium.Marker(start_coords, popup=f"Start: {st.session_state['start_name']}", icon=folium.Icon(color="green")).add_to(m)
         folium.Marker(end_coords, popup=f"End: {st.session_state['end_name']}", icon=folium.Icon(color="red")).add_to(m)
         folium.PolyLine([start_coords, end_coords], color="blue").add_to(m)
