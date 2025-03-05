@@ -1,0 +1,92 @@
+[
+    {
+        "Vehicle Type": "Minivan",
+        "Fuel Type": "CH",
+        "Emissions/km(g)": 94.25857424405099
+    },
+    {
+        "Vehicle Type": "Minivan",
+        "Fuel Type": "Diesel",
+        "Emissions/km(g)": 261.3388813176179
+    },
+    {
+        "Vehicle Type": "Minivan",
+        "Fuel Type": "Gasoline",
+        "Emissions/km(g)": 305.3342248339009
+    },
+    {
+        "Vehicle Type": "Minivan",
+        "Fuel Type": "NaturalGas",
+        "Emissions/km(g)": 276.5402379440496
+    },
+    {
+        "Vehicle Type": "Minivan",
+        "Fuel Type": "Other",
+        "Emissions/km(g)": 423.57405928922844
+    },
+    {
+        "Vehicle Type": "Minivan",
+        "Fuel Type": "ZEV",
+        "Emissions/km(g)": 5.2141761270917275
+    },
+    {
+        "Vehicle Type": "Passenger",
+        "Fuel Type": "CH",
+        "Emissions/km(g)": 65.8019020804954
+    },
+    {
+        "Vehicle Type": "Passenger",
+        "Fuel Type": "Diesel",
+        "Emissions/km(g)": 190.12778581393897
+    },
+    {
+        "Vehicle Type": "Passenger",
+        "Fuel Type": "Gasoline",
+        "Emissions/km(g)": 253.73246553614578
+    },
+    {
+        "Vehicle Type": "Passenger",
+        "Fuel Type": "NaturalGas",
+        "Emissions/km(g)": 201.29468950573212
+    },
+    {
+        "Vehicle Type": "Passenger",
+        "Fuel Type": "Other",
+        "Emissions/km(g)": 308.69009746601625
+    },
+    {
+        "Vehicle Type": "Passenger",
+        "Fuel Type": "ZEV",
+        "Emissions/km(g)": 3.9728260849542494
+    },
+    {
+        "Vehicle Type": "SUV",
+        "Fuel Type": "CH",
+        "Emissions/km(g)": 98.38926787737647
+    },
+    {
+        "Vehicle Type": "SUV",
+        "Fuel Type": "Diesel",
+        "Emissions/km(g)": 338.56982200284773
+    },
+    {
+        "Vehicle Type": "SUV",
+        "Fuel Type": "Gasoline",
+        "Emissions/km(g)": 327.2931364049562
+    },
+    {
+        "Vehicle Type": "SUV",
+        "Fuel Type": "NaturalGas",
+        "Emissions/km(g)": 369.683320534578
+    },
+    {
+        "Vehicle Type": "SUV",
+        "Fuel Type": "Other",
+        "Emissions/km(g)": 434.52064064839936
+    },
+    {
+        "Vehicle Type": "SUV",
+        "Fuel Type": "ZEV",
+        "Emissions/km(g)": 4.275435865668961
+    }
+]
