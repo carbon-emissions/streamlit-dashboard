@@ -8,6 +8,49 @@ from folium.plugins import Geocoder
 from folium.plugins import LocateControl
 from geopy.geocoders import Nominatim
 
+import streamlit as st
+import googlemaps
+import math
+from streamlit_folium import st_folium
+import folium
+
+# Streamlit UI
+st.set_page_config(page_title="CO₂de Red", layout="wide")
+# st.title(":car: CO₂de Red")
+
+st.markdown("""
+    <style>
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px; /* Adjust spacing */
+        }
+    </style>
+    <div class="logo-container">
+        <img src="content/logo.png" width="75">
+    </div>
+""", unsafe_allow_html=True)
+
+st.markdown("<h1 style='text-align: center;'>CO₂de Red</h1>", unsafe_allow_html=True)
+
+st.write("Enter or click on the map to set your start and end locations.")
+
+# Custom CSS for the top navbar
+st.markdown("""
+    <style>
+        .top-bar {
+            background-color: #D32F2F; /* Red color */
+            height: 10px; /* Adjust height as needed */
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 9999;
+        }
+    </style>
+    <div class="top-bar"></div>
+""", unsafe_allow_html=True)
+
 # Set API keys (Replace with your actual keys)
 GOOGLE_MAPS_API_KEY = "AIzaSyA8pRHkAHz2Zj45d2bTFwIt3V0F1PR9kA8"
 OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
@@ -83,14 +126,6 @@ def get_ai_feedback(distance, emissions, vehicle_type):
     )
     return response["choices"][0]["message"]["content"]
 
-# Streamlit UI
-st.set_page_config(page_title="CO₂de Red", layout="wide")
-# st.title(":car: CO₂de Red")
-
-st.image("content/logo.png", use_container_width=False, width=75)  # Auto scales image
-st.markdown("<h1 style='text-align: center;'>CO₂de Red</h1>", unsafe_allow_html=True)
-
-st.write("Enter or click on the map to set your start and end locations.")
 
 # Default map center at Vancouver
 INITIAL_LAT = 49.2827
@@ -113,9 +148,13 @@ if "end_coords" not in st.session_state:
     st.session_state["end_coords"] = None
     st.session_state["end_name"] = None
     
-# function to reset zoom and center
+# function to reset map
 def reset_map():
-    st.session_state.map_center = {"lat": INITIAL_LAT, "lon": INITIAL_LONG, "zoom": INITIAL_LONG}
+    st.session_state.map_center = {"lat": INITIAL_LAT, "lon": INITIAL_LONG, "zoom": INITIAL_ZOOM}
+    st.session_state.start_coords = None  # Reset markers if needed
+    st.session_state.end_coords = None
+    st.session_state.refresh_map = True  # Force refresh
+    st.rerun()
 
 # UI for manual input of locations
 col1, col2 = st.columns(2)
@@ -194,9 +233,8 @@ if vehicle_type not in ["Skytrain", "Bus", "Seabus"]:
 else:
     fuel_type = None  # Fuel type is not needed for public transport
 
-# Add a button to reset the zoom level
-st.button("Reset Zoom", on_click=reset_map)
-
+# Add a button to reset map
+st.button("Clear Current Selected Locations", on_click=reset_map)
 
 # Button to calculate emissions
 if st.button("Calculate Emissions"):
