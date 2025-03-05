@@ -219,6 +219,9 @@ with col2:
     if st.session_state["end_coords"]:
         st.success(f"End: {st.session_state['end_name']} ({st.session_state['end_coords']})")
 
+# Add a button to reset map
+st.button("Clear Current Selected Locations", on_click=reset_map)
+
 # Select vehicle type
 vehicle_type = st.selectbox(":train2: Select Vehicle Type", list(VEHICLE_TYPES.keys()))
 
@@ -227,9 +230,6 @@ if vehicle_type not in ["Public Transit (e.g., Bus, Skytrain, Seabus, etc.)"]:
     fuel_type = st.radio(":fuelpump: Select Fuel Type", list(FUEL_TYPES.keys()), horizontal=True)
 else:
     fuel_type = None  # Fuel type is not needed for public transport
-
-# Add a button to reset map
-st.button("Clear Current Selected Locations", on_click=reset_map)
 
 # Button to calculate emissions
 if st.button("Calculate Emissions"):
