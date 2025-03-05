@@ -13,23 +13,20 @@ import googlemaps
 import math
 from streamlit_folium import st_folium
 import folium
+import pathlib
 
 # Streamlit UI
 st.set_page_config(page_title="CO₂de Red", layout="wide")
 # st.title(":car: CO₂de Red")
 
-st.markdown("""
-    <style>
-        .logo-container {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px; /* Adjust spacing */
-        }
-    </style>
-    <div class="logo-container">
-        <img src="content/logo.png" width="75">
-    </div>
-""", unsafe_allow_html=True)
+# centred but image not visible
+# st.markdown("""
+#     <div style="text-align: center;">
+#         <img src="content/logo.png" width="150">
+#     </div>
+# """, unsafe_allow_html=True)
+
+st.image("content/logo.png", use_container_width=False, width=75)
 
 st.markdown("<h1 style='text-align: center;'>CO₂de Red</h1>", unsafe_allow_html=True)
 
@@ -63,9 +60,7 @@ VEHICLE_TYPES = {
     "Passenger": 170,
     "Minivan": 128,
     "SUV": 31,
-    "Bus": 234,
-    "Skytrain": 123,
-    "Seabus": 456
+    "Public Transit (e.g., Bus, Skytrain, Seabus, etc.)": 234
 }
 
 # fuel types  # DO WE NEED THIS TO BE DICTIONARY?!
@@ -228,7 +223,7 @@ with col2:
 vehicle_type = st.selectbox(":train2: Select Vehicle Type", list(VEHICLE_TYPES.keys()))
 
 # Only show fuel type if NOT using public transport
-if vehicle_type not in ["Skytrain", "Bus", "Seabus"]:
+if vehicle_type not in ["Public Transit (e.g., Bus, Skytrain, Seabus, etc.)"]:
     fuel_type = st.radio(":fuelpump: Select Fuel Type", list(FUEL_TYPES.keys()), horizontal=True)
 else:
     fuel_type = None  # Fuel type is not needed for public transport
@@ -266,3 +261,5 @@ if st.button("Calculate Emissions"):
         st_folium(m, height=700, width=1200)
     else:
         st.error("Please select both a start and end location on the map.")
+
+        
