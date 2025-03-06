@@ -16,6 +16,7 @@ import math
 from streamlit_folium import st_folium
 import folium
 import pathlib
+import re
 
 # Streamlit UI
 st.set_page_config(page_title="CO₂de Red", layout="wide")
@@ -355,8 +356,8 @@ if st.button("Calculate Emissions"):
         
 if 'emissions' in st.session_state:
 
-    st.write(f"Average Emissions for your trip: {st.session_state['emissions']:.2f} kg")
-    st.write(f"Distance travelled in the selected mode of transport: {st.session_state['distance']:.2f} km")        
+    st.write(f"**Average Emissions for your trip:** **:red[{st.session_state['emissions']:.2f} kg]**")
+    st.write(f"**Distance travelled in the selected mode of transport:** **:red[{st.session_state['distance']:.2f} km]**")        
 
 # # Display route data
 # if 'route_data' in st.session_state:
@@ -371,31 +372,66 @@ if 'emissions' in st.session_state:
 #             st.write(f"**Transit Mode:** {step['vehicle']}")
 #             st.write(f"**Distance:** {step['distance']}")
 #             st.write('---')
+
+def extract_numeric_time(value):
+    match = re.search(r"[\d\.]+", value)  # Extracts number (supports decimals)
+    return float(match.group()) if match else 0  # Converts to float if found, otherwise returns 0
+
+def extract_numeric_distance(value):
+    """Extracts numeric value from a string and converts meters to km if needed."""
+    match = re.search(r"([\d\.]+)\s*(km|m)?", value)  # Extract number + unit if present
+    if match:
+        num = float(match.group(1))  # Extracted number
+        unit = match.group(2)  # Extracted unit (if available)
+        if unit == "m":  
+            return num / 1000  # Convert meters to kilometers
+        return num  # Already in km
+    return 0 
         
 # Display route data in horizontal boxes
 if 'route_data' in st.session_state:
     st.write("## Route Details")
 
-    for step in st.session_state['route_data']:
-        col1, col2, col3 = st.columns(3) 
+    if vehicle_type == "Transit":
+        for step in st.session_state['route_data']:
+            col1, col2, col3 = st.columns(3) 
+            
+            with col1:
+                st.markdown("### :bus: Transportation Mode")
+                st.write(step['mode'].capitalize())  # Display transport mode
+
+            with col2:
+                st.markdown("### :straight_ruler: Distance Travelled")
+                st.write(step['distance'])  # Display distance for this step
+
+            with col3:
+                st.markdown("### ⏳ Approximate Duration")
+                st.write(step['duration'])  # Display estimated duration
+            
+            st.divider()  # Adds a horizontal divider between route steps
+
+    else:
+        # Extract numeric values for summation
+        total_distance = sum(extract_numeric_distance(step['distance']) for step in st.session_state['route_data'])
+        total_duration = sum(extract_numeric_time(step['duration']) for step in st.session_state['route_data'])
+        mode = st.session_state['route_data'][0]['mode']  # Use mode from first step
+        
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             st.markdown("### :bus: Transportation Mode")
-            st.write(step['mode'].capitalize())  # Display transport mode
+            st.write(mode.capitalize())  # Display transport mode
 
         with col2:
             st.markdown("### :straight_ruler: Distance Travelled")
-            st.write(step['distance'])  # Display distance for this step
+            st.write(f"{total_distance} km")  # Display total distance
 
         with col3:
             st.markdown("### ⏳ Approximate Duration")
-            st.write(step['duration'])  # Display estimated duration
+            st.write(f"{total_duration} min")  # Display total duration
         
-        st.divider()  # Adds a horizontal divider between route steps
-
-     
-
-
+        st.divider()
+        
 
      
 
