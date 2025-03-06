@@ -1,11 +1,6 @@
 [
     {
         "Vehicle Type": "Minivan",
-        "Fuel Type": "CH",
-        "Emissions/km(g)": 94.25857424405099
-    },
-    {
-        "Vehicle Type": "Minivan",
         "Fuel Type": "Diesel",
         "Emissions/km(g)": 261.3388813176179
     },
@@ -26,13 +21,8 @@
     },
     {
         "Vehicle Type": "Minivan",
-        "Fuel Type": "ZEV",
+        "Fuel Type": "Zero Emission Vehicles",
         "Emissions/km(g)": 5.2141761270917275
-    },
-    {
-        "Vehicle Type": "Passenger",
-        "Fuel Type": "CH",
-        "Emissions/km(g)": 65.8019020804954
     },
     {
         "Vehicle Type": "Passenger",
@@ -56,13 +46,8 @@
     },
     {
         "Vehicle Type": "Passenger",
-        "Fuel Type": "ZEV",
+        "Fuel Type": "Zero Emission Vehicles",
         "Emissions/km(g)": 3.9728260849542494
-    },
-    {
-        "Vehicle Type": "SUV",
-        "Fuel Type": "CH",
-        "Emissions/km(g)": 98.38926787737647
     },
     {
         "Vehicle Type": "SUV",
@@ -86,7 +71,7 @@
     },
     {
         "Vehicle Type": "SUV",
-        "Fuel Type": "ZEV",
+        "Fuel Type": "Zero Emission Vehicles",
         "Emissions/km(g)": 4.275435865668961
     },
     {

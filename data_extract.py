@@ -4,7 +4,9 @@ import json
 def process_emissions_data(file_path):
     data = pd.read_csv(file_path, low_memory=False)
     df = data.iloc[:, :-1]  # Dropping last empty column
-    df.loc[df['Fuel Type'].str.startswith('ZEV', na=False), 'Fuel Type'] = 'ZEV'
+    df.loc[df['Fuel Type'].str.startswith('ZEV', na=False), 'Fuel Type'] = 'Zero Emission Vehicles'
+    
+    df = df.loc[df['Fuel Type'].ne('CH')]
 
     required_vehicle_types = ['Passenger', 'SUV', 'Minivan']
     bc_transport = df[df['Vehicle Type'].isin(required_vehicle_types)].reset_index(drop=True)
