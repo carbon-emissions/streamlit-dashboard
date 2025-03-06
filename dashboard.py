@@ -360,16 +360,17 @@ if 'emissions' in st.session_state:
 
 # Display route data
 if 'route_data' in st.session_state:
-    st.write("## Route Details")
+    transit_displayed = False
+    
     for step in st.session_state['route_data']:
-        st.write(f"**Mode:** {step['mode']}")
-        # st.write(f"**From:** {step['departure_stop']}")
-        # st.write(f"**To:** {step['arrival_stop']}")
-        st.write(f"**Distance:** {step['distance']}")
-        if 'walking_before' in step:
-            st.write(f"**Walking before:** {step['walking_before']}")
-        if 'walking_after' in step:
-            st.write(f"**Walking after:** {step['walking_after']}")
-        st.write("---")
+        if step['mode'] == 'transit' and 'vehicle' in step:
+            if not transit_displayed:
+                st.write("## Transit Route Details")
+                transit_displayed = True  # Set flag to True after first display
+    
+            st.write(f"**Transit Mode:** {step['vehicle']}")
+            st.write(f"**Distance:** {step['distance']}")
+            st.write('---')
+        
      
 
