@@ -196,5 +196,6 @@ dependencies:
       - tqdm==4.67.1
       - watchdog==6.0.0
       - xyzservices==2025.1.0
-      - pathlib
+      - pathlib 
+      - re
 prefix: /Users/maxineparedes/miniconda3/envs/ce_env

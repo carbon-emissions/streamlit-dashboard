@@ -16,7 +16,9 @@ import math
 from streamlit_folium import st_folium
 import folium
 import pathlib
+import re
 from geminiAPI import *
+
 
 # Streamlit UI
 st.set_page_config(page_title="CO₂de Red", layout="wide")
@@ -216,11 +218,9 @@ vehicle_type = st.selectbox(":train2: Select Vehicle Type", VEHICLE_TYPES)
 
 if vehicle_type in ["Passenger", "Minivan", "SUV"]:
     fuel_type = st.radio(":fuelpump: Select Fuel Type", FUEL_TYPES, horizontal=True)
+    num_passengers = st.number_input("Number of Passengers", min_value=1, max_value=6, value=1)
 else:
     fuel_type = None  # Fuel type is not needed for public transport
-
-# Select number of passengers in vehicle
-num_passengers = st.number_input("Number of Passengers", min_value=1, max_value=6, value=1)
 
 # Add a button to reset the zoom level
 st.button("Reset Zoom", on_click=reset_zoom)
@@ -264,22 +264,86 @@ if st.button("Calculate Emissions"):
         
 if 'emissions' in st.session_state and st.session_state['emissions'] is not None:
 
-    st.write(f"Average Emissions for your trip: {st.session_state['emissions']:.2f} kg")
-    st.write(f"Distance travelled in the selected mode of transport: {st.session_state['distance']:.2f} km")        
 
-# Display route data
-if 'route_data' in st.session_state and st.session_state['route_data'] is not None:
-    transit_displayed = False
+    st.write(f"**Average Emissions for your trip:** **:red[{st.session_state['emissions']:.2f} kg]**")
+    st.write(f"**Distance travelled in the selected mode of transport:** **:red[{st.session_state['distance']:.2f} km]**")        
+
+# # Display route data
+# if 'route_data' in st.session_state:
+#     transit_displayed = False
+
     
-    for step in st.session_state['route_data']:
-        if step['mode'] == 'transit' and 'vehicle' in step:
-            if not transit_displayed:
-                st.write("## Transit Route Details")
-                transit_displayed = True  # Set flag to True after first display
+#     for step in st.session_state['route_data']:
+#         if step['mode'] == 'transit' and 'vehicle' in step:
+#             if not transit_displayed:
+#                 st.write("## Transit Route Details")
+#                 transit_displayed = True  # Set flag to True after first display
     
-            st.write(f"**Transit Mode:** {step['vehicle']}")
-            st.write(f"**Distance:** {step['distance']}")
-            st.write('---')
+#             st.write(f"**Transit Mode:** {step['vehicle']}")
+#             st.write(f"**Distance:** {step['distance']}")
+#             st.write('---')
+
+def extract_numeric_time(value):
+    match = re.search(r"[\d\.]+", value)  # Extracts number (supports decimals)
+    return float(match.group()) if match else 0  # Converts to float if found, otherwise returns 0
+
+def extract_numeric_distance(value):
+    """Extracts numeric value from a string and converts meters to km if needed."""
+    match = re.search(r"([\d\.]+)\s*(km|m)?", value)  # Extract number + unit if present
+    if match:
+        num = float(match.group(1))  # Extracted number
+        unit = match.group(2)  # Extracted unit (if available)
+        if unit == "m":  
+            return num / 1000  # Convert meters to kilometers
+        return num  # Already in km
+    return 0 
         
-    st.write(get_ai_feedback(st.session_state['route_data']))
 
+# Display route data in horizontal boxes
+if 'route_data' in st.session_state:
+    st.write("## Route Details")
+
+    if vehicle_type == "Transit":
+        for step in st.session_state['route_data']:
+            col1, col2, col3 = st.columns(3) 
+            
+            with col1:
+                st.markdown("### :bus: Transportation Mode")
+                st.write(step['mode'].capitalize())  # Display transport mode
+
+            with col2:
+                st.markdown("### :straight_ruler: Distance Travelled")
+                st.write(step['distance'])  # Display distance for this step
+
+            with col3:
+                st.markdown("### ⏳ Approximate Duration")
+                st.write(step['duration'])  # Display estimated duration
+            
+            st.divider()  # Adds a horizontal divider between route steps
+
+    else:
+        # Extract numeric values for summation
+        total_distance = sum(extract_numeric_distance(step['distance']) for step in st.session_state['route_data'])
+        total_duration = sum(extract_numeric_time(step['duration']) for step in st.session_state['route_data'])
+        mode = st.session_state['route_data'][0]['mode']  # Use mode from first step
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("### :bus: Transportation Mode")
+            st.write(mode.capitalize())  # Display transport mode
+
+        with col2:
+            st.markdown("### :straight_ruler: Distance Travelled")
+            st.write(f"{total_distance} km")  # Display total distance
+
+        with col3:
+            st.markdown("### ⏳ Approximate Duration")
+            st.write(f"{total_duration} min")  # Display total duration
+        
+        st.divider()
+        
+
+     
+
+    st.write(get_ai_feedback(st.session_state['route_data']))
