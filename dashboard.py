@@ -295,20 +295,21 @@ if st.button("Calculate Emissions"):
        # Set the mode dynamically based on vehicle type
         mode = 'driving' if vehicle_type in ['Passenger', 'Minivan', 'SUV'] else 'transit'
 
-        # Calculate the total distance
-        distance = get_total_distance_for_emissions(start_coords[0], start_coords[1], end_coords[0], end_coords[1], mode=mode)
         route_data, encoded_polyline = get_route_data(start_address, end_address, mode=mode)
 
 
         # Calculate emissions using the new function
         try:
             if fuel_type is not None:
+                # Calculate the total distance
+                total_distance = get_total_distance_for_emissions(start_coords[0], start_coords[1], end_coords[0], end_coords[1], mode=mode)
                 # Calculate emissions for fuel-based vehicle types (e.g., cars)
-                emissions_per_passenger = calculate_emissions(vehicle_type, fuel_type, distance, num_passengers)
+                emissions_per_passenger = calculate_emissions(vehicle_type, fuel_type, total_distance, num_passengers)
                 emissions_in_kg = emissions_per_passenger / 1000  # Convert g to kg CO₂
             else:
                 # If fuel_type is None, it implies we're using public transit, so calculate emissions based on transit distances
                 transit_distances = calculate_transit_distances(route_data)
+                total_distance = sum(transit_distances.values())
                 
                 # Now calculate the emissions for each transit type (Bus, Subway, etc.)
                 total_emissions = 0
@@ -326,7 +327,7 @@ if st.button("Calculate Emissions"):
             
             # Store results in session state
             st.session_state['emissions'] = emissions_in_kg
-            st.session_state['distance'] = distance
+            st.session_state['distance'] = total_distance
 
             # Store route data in session state
             st.session_state['route_data'] = route_data
