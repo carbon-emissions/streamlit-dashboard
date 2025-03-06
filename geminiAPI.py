@@ -13,7 +13,7 @@ genai.configure(api_key=GEMINI_API_KEY)
 def get_ai_feedback(travel_data):
     """Generates AI-based feedback using Gemini."""
     
-    prompt = "Based on the route data from the google maps API below, based on the mode of transport and other factors you can consider, provide 3 key recommendations for the user to reduce their carbon emissions in this trip. Do not give an overall assesment, do not give emission estimates. Give exact usable recommendations (3) in a bullet point format and keep them concise.:\n\n"
+    prompt = "Based on the route data from the google maps API below, based on the mode of transport and other factors you can consider, provide 3 key recommendations for the user to reduce their carbon emissions in this trip. Do not give an overall assesment, do not give emission estimates. Give exact usable recommendations (3) in a bullet point format and keep them concise.Do not include infrastructure recommendations for improvement but include how can the user emit less emission by providing alternative routes or modes of transportation.:\n\n"
 
     for step in travel_data:
         mode = step.get("mode", "Unknown Mode")
