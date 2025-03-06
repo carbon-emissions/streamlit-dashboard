@@ -2,17 +2,16 @@ import streamlit as st
 import folium
 from streamlit_folium import folium_static, st_folium
 import googlemaps
-import openai
-import math
 from folium.plugins import Geocoder
 from folium.plugins import LocateControl
 from geopy.geocoders import Nominatim
-from backend import calculate_emissions
+from backend import *
 import json
+import requests
+import polyline
 
 # Set API keys (Replace with your actual keys)
 GOOGLE_MAPS_API_KEY = "AIzaSyA8pRHkAHz2Zj45d2bTFwIt3V0F1PR9kA8"
-OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
 
 # Initialize Google Maps API client
 gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
@@ -21,42 +20,21 @@ with open('data/emissions_data.json', 'r') as f:
     data = json.load(f)
 
 # Extract unique vehicle types and fuel types
-vehicle_types = {entry['Vehicle Type'] for entry in data}
+vehicle_types = { 
+    'Transit' if entry['Vehicle Type'] in ['Bus', 'Subway'] else entry['Vehicle Type'] 
+    for entry in data
+}
 fuel_types = {entry['Fuel Type'] for entry in data}
 
 VEHICLE_TYPES = list(vehicle_types)
 FUEL_TYPES = list(fuel_types)
 
 
-# # vehicle types  & emission factors (g/km) -> ADD VALUES FROM MODEL
-# VEHICLE_TYPES = {
-#     "Passenger": 170,
-#     "Minivan": 128,
-#     "SUV": 31,
-#     "Bus": 234,
-#     "Skytrain": 123,
-#     "Seabus": 456
-# }
 
-# # fuel types  # DO WE NEED THIS TO BE DICTIONARY?!
-# FUEL_TYPES = {
-#     "Gasoline": 170,
-#     "Diesel": 128,
-#     "Natural Gas": 31,
-#     "CH": 234,
-#     "ZEV": 123,
-#     "BEV": 456,
-#     "PHEV": 93,
-# }
+def decode_polyline(encoded_polyline):
+    return polyline.decode(encoded_polyline)
 
-# Function to calculate Haversine distance (in km)
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371  # Radius of Earth in km
-    d_lat = math.radians(lat2 - lat1)
-    d_lon = math.radians(lon2 - lon1)
-    a = math.sin(d_lat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(d_lon / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
+
 
 # Function to get coordinates from an address
 def get_coordinates(address):
@@ -69,6 +47,8 @@ def get_coordinates(address):
     except Exception:
         return None
 
+
+
 # Function to get place name from coordinates (Reverse Geocoding)
 def get_place_name(lat, lon):
     try:
@@ -79,22 +59,76 @@ def get_place_name(lat, lon):
     except Exception:
         return "Unknown Location"
 
-# Function to get AI feedback
-def get_ai_feedback(distance, emissions, vehicle_type):
-    prompt = f"""
-    Provide an assessment of this journey:
-    - Distance: {distance:.2f} km
-    - Transport Type: {vehicle_type}
-    - CO₂ Emissions: {emissions:.2f} kg CO₂
+
     
-    Suggest alternative eco-friendly transport options if applicable.
-    """
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
-    )
-    return response["choices"][0]["message"]["content"]
+def get_route_data(origin, destination, mode="driving"):
+    """Fetch route details from Google Maps API based on selected mode."""
+    origin_coords = get_coordinates(origin)
+    destination_coords = get_coordinates(destination)
+
+    if not origin_coords or not destination_coords:
+        return "Error fetching coordinates."
+
+    base_url = "https://maps.googleapis.com/maps/api/directions/json"
+
+    # Build API request URL dynamically
+    url = f"{base_url}?origin={origin_coords[0]},{origin_coords[1]}&destination={destination_coords[0]},{destination_coords[1]}&mode={mode}&key={GOOGLE_MAPS_API_KEY}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        directions = response.json()
+        travel_data = []
+        encoded_polyline = ""
+
+        if "routes" in directions and len(directions["routes"]) > 0:
+            route = directions["routes"][0]
+            encoded_polyline = route["overview_polyline"]["points"]
+
+            for leg in route["legs"]:
+                for step_index, step in enumerate(leg["steps"]):
+                    step_info = {
+                        "mode": step["travel_mode"].lower(),
+                        "instruction": step["html_instructions"],
+                        "distance": step["distance"]["text"],
+                        "duration": step["duration"]["text"],
+                    }
+
+                    # Handle transit mode details
+                    if step_info["mode"] == "transit" and "transit_details" in step:
+                        transit = step["transit_details"]
+                        step_info.update({
+                            "transit_line": transit.get("line", {}).get("name", "Unknown Line"),
+                            "vehicle": transit.get("line", {}).get("vehicle", {}).get("name", "Unknown Vehicle"),
+                            "departure_stop": transit.get("departure_stop", {}).get("name", "Unknown Stop"),
+                            "arrival_stop": transit.get("arrival_stop", {}).get("name", "Unknown Stop"),
+                        })
+
+                        # Walking before/after transit
+                        if step_index > 0 and leg["steps"][step_index - 1]["travel_mode"].lower() == "walking":
+                            step_info["walking_before"] = f"{leg['steps'][step_index - 1]['distance']['text']} (Duration: {leg['steps'][step_index - 1]['duration']['text']})"
+
+                        if step_index < len(leg["steps"]) - 1 and leg["steps"][step_index + 1]["travel_mode"].lower() == "walking":
+                            step_info["walking_after"] = f"{leg['steps'][step_index + 1]['distance']['text']} (Duration: {leg['steps'][step_index + 1]['duration']['text']})"
+
+                    travel_data.append(step_info)
+
+        return travel_data, encoded_polyline
+    else:
+        return f"Error fetching route data: {response.status_code}"
+    
+
+
+def calculate_transit_distances(route_data):
+    transit_distances = {}
+    for segment in route_data:
+        if segment['mode'] == 'transit' and 'vehicle' in segment:
+            vehicle = segment['vehicle']
+            distance = float(segment['distance'].split()[0])
+            if vehicle in transit_distances:
+                transit_distances[vehicle] += distance
+            else:
+                transit_distances[vehicle] = distance
+    return transit_distances
 
 # Streamlit UI
 st.set_page_config(page_title="Emission Calculator", layout="wide")
@@ -198,7 +232,7 @@ with col2:
 vehicle_type = st.selectbox(":train2: Select Vehicle Type", VEHICLE_TYPES)
 
 # Only show fuel type if NOT using public transport
-if vehicle_type not in ["Skytrain", "Bus", "Seabus"]:
+if vehicle_type in ["Passenger", "Minivan", "SUV"]:
     fuel_type = st.radio(":fuelpump: Select Fuel Type", FUEL_TYPES, horizontal=True)
 else:
     fuel_type = None  # Fuel type is not needed for public transport
@@ -215,21 +249,48 @@ if st.button("Calculate Emissions"):
     if st.session_state["start_coords"] and st.session_state["end_coords"]:
         start_coords = st.session_state["start_coords"]
         end_coords = st.session_state["end_coords"]
+        start_address = st.session_state["start_name"]
+        end_address = st.session_state["end_name"]
 
-        # Calculate distance using Haversine formula
-        distance = haversine(start_coords[0], start_coords[1], end_coords[0], end_coords[1])
+       # Set the mode dynamically based on vehicle type
+        mode = 'driving' if vehicle_type in ['Passenger', 'Minivan', 'SUV'] else 'transit'
+
+        # Calculate the total distance
+        distance = get_total_distance_for_emissions(start_coords[0], start_coords[1], end_coords[0], end_coords[1], mode=mode)
+        route_data, encoded_polyline = get_route_data(start_address, end_address, mode=mode)
+
 
         # Calculate emissions using the new function
         try:
-            emissions_per_passenger = calculate_emissions(vehicle_type, fuel_type, distance, num_passengers)
-            emissions_in_kg = emissions_per_passenger / 1000  # Convert g to kg CO₂
-
-            # AI-generated feedback
-            # ai_feedback = get_ai_feedback(distance, emissions, vehicle_type)
-
+            if fuel_type is not None:
+                # Calculate emissions for fuel-based vehicle types (e.g., cars)
+                emissions_per_passenger = calculate_emissions(vehicle_type, fuel_type, distance, num_passengers)
+                emissions_in_kg = emissions_per_passenger / 1000  # Convert g to kg CO₂
+            else:
+                # If fuel_type is None, it implies we're using public transit, so calculate emissions based on transit distances
+                transit_distances = calculate_transit_distances(route_data)
+                
+                # Now calculate the emissions for each transit type (Bus, Subway, etc.)
+                total_emissions = 0
+                for transit_type, distance in transit_distances.items():
+                    # Find the emissions per km for the transit type
+                    vehicle_info = next((item for item in data if item["Vehicle Type"] == transit_type), None)
+                    
+                    if vehicle_info:
+                        emissions_per_km = vehicle_info["Emissions/km(g)"]
+                        emissions = distance * emissions_per_km  # emissions in grams
+                        total_emissions += emissions
+                
+                # Convert total emissions to kg
+                emissions_in_kg = total_emissions / 1000  # Convert grams to kilograms
+            
             # Store results in session state
             st.session_state['emissions'] = emissions_in_kg
             st.session_state['distance'] = distance
+
+            # Store route data in session state
+            st.session_state['route_data'] = route_data
+            st.session_state['encoded_polyline'] = encoded_polyline
 
             # Display results
             # st.success(f":straight_ruler: Distance: {distance:.2f} km")
@@ -241,12 +302,31 @@ if st.button("Calculate Emissions"):
         m = folium.Map(location=start_coords, zoom_start=INITIAL_ZOOM)
         folium.Marker(start_coords, popup=f"Start: {st.session_state['start_name']}", icon=folium.Icon(color="green")).add_to(m)
         folium.Marker(end_coords, popup=f"End: {st.session_state['end_name']}", icon=folium.Icon(color="red")).add_to(m)
-        folium.PolyLine([start_coords, end_coords], color="blue").add_to(m)
-        # Geocoder().add_to(m)
+
+        # Decode and add the polyline to the map
+        if encoded_polyline:
+            decoded_polyline = decode_polyline(encoded_polyline)
+            decoded_polyline = [list(tup) for tup in decoded_polyline]
+            folium.PolyLine(decoded_polyline, color="blue", weight=5, opacity=0.8).add_to(m)
+
         st_folium(m, height=700, width=1200)
     else:
         st.error("Please select both a start and end location on the map.")
 
 if 'emissions' in st.session_state:
-    st.write(f"Emissions: {st.session_state['emissions']:.2f} kg per passenger")
-    st.write(f"Distance: {st.session_state['distance']:.2f} km")        
+    st.write(f"Average Emissions for your trip: {st.session_state['emissions']:.2f}")
+    st.write(f"Distance travelled in the selected mode of transport: {st.session_state['distance']:.2f} km")        
+
+# Display route data
+if 'route_data' in st.session_state:
+    st.write("## Route Details")
+    for step in st.session_state['route_data']:
+        st.write(f"**Mode:** {step['mode']}")
+        # st.write(f"**From:** {step['departure_stop']}")
+        # st.write(f"**To:** {step['arrival_stop']}")
+        st.write(f"**Distance:** {step['distance']}")
+        if 'walking_before' in step:
+            st.write(f"**Walking before:** {step['walking_before']}")
+        if 'walking_after' in step:
+            st.write(f"**Walking after:** {step['walking_after']}")
+        st.write("---")
