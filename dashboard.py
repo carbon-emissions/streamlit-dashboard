@@ -17,6 +17,8 @@ from streamlit_folium import st_folium
 import folium
 import pathlib
 import re
+from geminiAPI import *
+
 
 # Streamlit UI
 st.set_page_config(page_title="CO₂de Red", layout="wide")
@@ -51,12 +53,6 @@ st.markdown("""
     <div class="top-bar"></div>
 """, unsafe_allow_html=True)
 
-# Set API keys (Replace with your actual keys)
-GOOGLE_MAPS_API_KEY = "AIzaSyA8pRHkAHz2Zj45d2bTFwIt3V0F1PR9kA8"
-
-# Initialize Google Maps API client
-gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
-
 with open('data/emissions_data.json', 'r') as f:
     data = json.load(f)
 
@@ -74,18 +70,6 @@ def decode_polyline(encoded_polyline):
     return polyline.decode(encoded_polyline)
 
 
-# Function to get coordinates from an address
-def get_coordinates(address):
-    try:
-        result = gmaps.geocode(address)
-        if result:
-            location = result[0]["geometry"]["location"]
-            return (location["lat"], location["lng"])
-        return None
-    except Exception:
-        return None
-
-
 
 # Function to get place name from coordinates (Reverse Geocoding)
 def get_place_name(lat, lon):
@@ -96,64 +80,7 @@ def get_place_name(lat, lon):
         return "Unknown Location"
     except Exception:
         return "Unknown Location"
-
-
-    
-def get_route_data(origin, destination, mode="driving"):
-    """Fetch route details from Google Maps API based on selected mode."""
-    origin_coords = get_coordinates(origin)
-    destination_coords = get_coordinates(destination)
-
-    if not origin_coords or not destination_coords:
-        return "Error fetching coordinates."
-
-    base_url = "https://maps.googleapis.com/maps/api/directions/json"
-
-    # Build API request URL dynamically
-    url = f"{base_url}?origin={origin_coords[0]},{origin_coords[1]}&destination={destination_coords[0]},{destination_coords[1]}&mode={mode}&key={GOOGLE_MAPS_API_KEY}"
-    response = requests.get(url)
-
-    if response.status_code == 200:
-        directions = response.json()
-        travel_data = []
-        encoded_polyline = ""
-
-        if "routes" in directions and len(directions["routes"]) > 0:
-            route = directions["routes"][0]
-            encoded_polyline = route["overview_polyline"]["points"]
-
-            for leg in route["legs"]:
-                for step_index, step in enumerate(leg["steps"]):
-                    step_info = {
-                        "mode": step["travel_mode"].lower(),
-                        "instruction": step["html_instructions"],
-                        "distance": step["distance"]["text"],
-                        "duration": step["duration"]["text"],
-                    }
-
-                    # Handle transit mode details
-                    if step_info["mode"] == "transit" and "transit_details" in step:
-                        transit = step["transit_details"]
-                        step_info.update({
-                            "transit_line": transit.get("line", {}).get("name", "Unknown Line"),
-                            "vehicle": transit.get("line", {}).get("vehicle", {}).get("name", "Unknown Vehicle"),
-                            "departure_stop": transit.get("departure_stop", {}).get("name", "Unknown Stop"),
-                            "arrival_stop": transit.get("arrival_stop", {}).get("name", "Unknown Stop"),
-                        })
-
-                        # Walking before/after transit
-                        if step_index > 0 and leg["steps"][step_index - 1]["travel_mode"].lower() == "walking":
-                            step_info["walking_before"] = f"{leg['steps'][step_index - 1]['distance']['text']} (Duration: {leg['steps'][step_index - 1]['duration']['text']})"
-
-                        if step_index < len(leg["steps"]) - 1 and leg["steps"][step_index + 1]["travel_mode"].lower() == "walking":
-                            step_info["walking_after"] = f"{leg['steps'][step_index + 1]['distance']['text']} (Duration: {leg['steps'][step_index + 1]['duration']['text']})"
-
-                    travel_data.append(step_info)
-
-        return travel_data, encoded_polyline
-    else:
-        return f"Error fetching route data: {response.status_code}"
-    
+   
 
 
 def calculate_transit_distances(route_data):
@@ -193,8 +120,18 @@ if "end_coords" not in st.session_state:
 # function to reset map
 def reset_map():
     st.session_state.map_center = {"lat": INITIAL_LAT, "lon": INITIAL_LONG, "zoom": INITIAL_ZOOM}
-    st.session_state.start_coords = None  # Reset markers if needed
-    st.session_state.end_coords = None
+    st.session_state.start_coords = None  # Reset start marker
+    st.session_state.end_coords = None  # Reset end marker
+    st.session_state.encoded_polyline = None  # Remove the polyline
+    st.session_state.route_data = None  # Remove route data
+    st.session_state.emissions = None  # Reset emissions
+    st.session_state.distance = None  # Reset distance
+    st.session_state.refresh_map = True  # Force refresh
+    st.rerun()
+
+# function to reset only the zoom level
+def reset_zoom():
+    st.session_state.map_center = {"lat": INITIAL_LAT, "lon": INITIAL_LONG, "zoom": INITIAL_ZOOM}
     st.session_state.refresh_map = True  # Force refresh
     st.rerun()
 
@@ -241,6 +178,11 @@ if st.session_state["end_coords"]:
         icon=folium.Icon(color="red"),
     ).add_to(m)
 
+# If route data exists, add the polyline
+if "encoded_polyline" in st.session_state and st.session_state["encoded_polyline"]:
+    decoded_polyline = decode_polyline(st.session_state["encoded_polyline"])
+    folium.PolyLine(decoded_polyline, color="blue", weight=5, opacity=0.8).add_to(m)
+
 # Clickable Map
 map_data = st_folium(m, height=500, width=1400)
 
@@ -281,7 +223,7 @@ else:
     fuel_type = None  # Fuel type is not needed for public transport
 
 # Add a button to reset the zoom level
-st.button("Reset Zoom", on_click=reset_map)
+st.button("Reset Zoom", on_click=reset_zoom)
 
 # Button to calculate emissions
 if st.button("Calculate Emissions"):
@@ -291,68 +233,37 @@ if st.button("Calculate Emissions"):
         start_address = st.session_state["start_name"]
         end_address = st.session_state["end_name"]
 
-       # Set the mode dynamically based on vehicle type
+        # Set the mode dynamically based on vehicle type
         mode = 'driving' if vehicle_type in ['Passenger', 'Minivan', 'SUV'] else 'transit'
 
-        # Calculate the total distance
-        distance = get_total_distance_for_emissions(start_coords[0], start_coords[1], end_coords[0], end_coords[1], mode=mode)
         route_data, encoded_polyline = get_route_data(start_address, end_address, mode=mode)
 
-
-        # Calculate emissions using the new function
         try:
             if fuel_type is not None:
-                # Calculate emissions for fuel-based vehicle types (e.g., cars)
-                emissions_per_passenger = calculate_emissions(vehicle_type, fuel_type, distance, num_passengers)
+                total_distance = get_total_distance_for_emissions(start_coords[0], start_coords[1], end_coords[0], end_coords[1], mode=mode)
+                emissions_per_passenger = calculate_emissions(vehicle_type, fuel_type, total_distance, num_passengers)
                 emissions_in_kg = emissions_per_passenger / 1000  # Convert g to kg CO₂
             else:
-                # If fuel_type is None, it implies we're using public transit, so calculate emissions based on transit distances
                 transit_distances = calculate_transit_distances(route_data)
-                
-                # Now calculate the emissions for each transit type (Bus, Subway, etc.)
-                total_emissions = 0
-                for transit_type, distance in transit_distances.items():
-                    # Find the emissions per km for the transit type
-                    vehicle_info = next((item for item in data if item["Vehicle Type"] == transit_type), None)
-                    
-                    if vehicle_info:
-                        emissions_per_km = vehicle_info["Emissions/km(g)"]
-                        emissions = distance * emissions_per_km  # emissions in grams
-                        total_emissions += emissions
-                
-                # Convert total emissions to kg
+                total_distance = sum(transit_distances.values())
+                total_emissions = sum(distance * next((item["Emissions/km(g)"] for item in data if item["Vehicle Type"] == transit_type), 0) for transit_type, distance in transit_distances.items())
                 emissions_in_kg = total_emissions / 1000  # Convert grams to kilograms
             
-            # Store results in session state
+            # Store results and route data in session state
             st.session_state['emissions'] = emissions_in_kg
-            st.session_state['distance'] = distance
-
-            # Store route data in session state
+            st.session_state['distance'] = total_distance
             st.session_state['route_data'] = route_data
             st.session_state['encoded_polyline'] = encoded_polyline
-
-            # Display results
-            # st.success(f":straight_ruler: Distance: {distance:.2f} km")
-            # st.success(f":dash: CO₂ Emissions per Passenger: {emissions_in_kg:.2f} kg")
+        
         except ValueError as e:
             st.error(f"Error: {e}")
 
-        # Update map with route
-        m = folium.Map(location=start_coords, zoom_start=INITIAL_ZOOM)
-        folium.Marker(start_coords, popup=f"Start: {st.session_state['start_name']}", icon=folium.Icon(color="green")).add_to(m)
-        folium.Marker(end_coords, popup=f"End: {st.session_state['end_name']}", icon=folium.Icon(color="red")).add_to(m)
-
-        # Decode and add the polyline to the map
-        if encoded_polyline:
-            decoded_polyline = decode_polyline(encoded_polyline)
-            decoded_polyline = [list(tup) for tup in decoded_polyline]
-            folium.PolyLine(decoded_polyline, color="blue", weight=5, opacity=0.8).add_to(m)
-
-        st_folium(m, height=700, width=1200)
+        st.rerun()  # Force rerun to update the map
     else:
         st.error("Please select both a start and end location on the map.")
         
-if 'emissions' in st.session_state:
+if 'emissions' in st.session_state and st.session_state['emissions'] is not None:
+
 
     st.write(f"**Average Emissions for your trip:** **:red[{st.session_state['emissions']:.2f} kg]**")
     st.write(f"**Distance travelled in the selected mode of transport:** **:red[{st.session_state['distance']:.2f} km]**")        
@@ -360,6 +271,7 @@ if 'emissions' in st.session_state:
 # # Display route data
 # if 'route_data' in st.session_state:
 #     transit_displayed = False
+
     
 #     for step in st.session_state['route_data']:
 #         if step['mode'] == 'transit' and 'vehicle' in step:
@@ -386,6 +298,7 @@ def extract_numeric_distance(value):
         return num  # Already in km
     return 0 
         
+
 # Display route data in horizontal boxes
 if 'route_data' in st.session_state:
     st.write("## Route Details")
@@ -433,3 +346,4 @@ if 'route_data' in st.session_state:
 
      
 
+    st.write(get_ai_feedback(st.session_state['route_data']))
