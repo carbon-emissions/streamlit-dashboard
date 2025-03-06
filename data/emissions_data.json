@@ -88,5 +88,15 @@
         "Vehicle Type": "SUV",
         "Fuel Type": "ZEV",
         "Emissions/km(g)": 4.275435865668961
+    },
+    {
+        "Vehicle Type": "Bus",
+        "Fuel Type": null,
+        "Emissions/km(g)": 44.12738531063405
+    },
+    {
+        "Vehicle Type": "Subway",
+        "Fuel Type": null,
+        "Emissions/km(g)": 1.1031846327658512
     }
 ]

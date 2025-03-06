@@ -1,4 +1,5 @@
 import json
+import requests
 
 # Function to calculate emissions per passenger
 def calculate_emissions(vehicle_type, fuel_type, total_km, num_passengers=1):
@@ -17,11 +18,41 @@ def calculate_emissions(vehicle_type, fuel_type, total_km, num_passengers=1):
 
     return emissions_per_passenger
 
-# Example usage:
-vehicle_type = 'Minivan'
-fuel_type = 'Gasoline'
-total_km = 10 
-num_passengers = 4  # optional
 
-emissions = calculate_emissions(vehicle_type, fuel_type, total_km, num_passengers)
-print(f"Emissions per passenger: {emissions} grams")
+
+GOOGLE_MAPS_API_KEY = "AIzaSyA8pRHkAHz2Zj45d2bTFwIt3V0F1PR9kA8"
+base_url = "https://maps.googleapis.com/maps/api/directions/json"
+
+
+
+import requests
+
+# Function to calculate total distance (in km)
+def get_total_distance_for_emissions(lat1, lon1, lat2, lon2, mode='driving'):
+    base_url = "https://maps.googleapis.com/maps/api/directions/json"
+    url = f"{base_url}?origin={lat1},{lon1}&destination={lat2},{lon2}&mode={mode}&key={GOOGLE_MAPS_API_KEY}"
+    
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        directions = response.json()
+        total_distance = 0
+
+        if "routes" in directions and len(directions["routes"]) > 0:
+            route = directions["routes"][0]
+            for leg in route["legs"]:
+                # Check mode: If it's transit, filter out non-transit steps
+                for step in leg["steps"]:
+                    if mode == 'transit':
+                        if step['travel_mode'] == 'TRANSIT':  # Only count transit steps
+                            total_distance += step['distance']['value']
+                    else:
+                        total_distance += step['distance']['value']  # Count all steps for driving
+                
+            return total_distance / 1000  # Convert meters to km
+        
+        else:
+            return "Could Not Calculate Total Distance"
+    
+    else:
+        return f"Error fetching route data: {response.status_code}"
