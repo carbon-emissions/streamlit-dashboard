@@ -355,22 +355,47 @@ if st.button("Calculate Emissions"):
         
 if 'emissions' in st.session_state:
 
-    st.write(f"Average Emissions for your trip: {st.session_state['emissions']:.2f}")
+    st.write(f"Average Emissions for your trip: {st.session_state['emissions']:.2f} kg")
     st.write(f"Distance travelled in the selected mode of transport: {st.session_state['distance']:.2f} km")        
 
-# Display route data
-if 'route_data' in st.session_state:
-    transit_displayed = False
+# # Display route data
+# if 'route_data' in st.session_state:
+#     transit_displayed = False
     
-    for step in st.session_state['route_data']:
-        if step['mode'] == 'transit' and 'vehicle' in step:
-            if not transit_displayed:
-                st.write("## Transit Route Details")
-                transit_displayed = True  # Set flag to True after first display
+#     for step in st.session_state['route_data']:
+#         if step['mode'] == 'transit' and 'vehicle' in step:
+#             if not transit_displayed:
+#                 st.write("## Transit Route Details")
+#                 transit_displayed = True  # Set flag to True after first display
     
-            st.write(f"**Transit Mode:** {step['vehicle']}")
-            st.write(f"**Distance:** {step['distance']}")
-            st.write('---')
+#             st.write(f"**Transit Mode:** {step['vehicle']}")
+#             st.write(f"**Distance:** {step['distance']}")
+#             st.write('---')
         
+# Display route data in horizontal boxes
+if 'route_data' in st.session_state:
+    st.write("## Route Details")
+
+    for step in st.session_state['route_data']:
+        col1, col2, col3 = st.columns(3) 
+        
+        with col1:
+            st.markdown("### :bus: Transportation Mode")
+            st.write(step['mode'].capitalize())  # Display transport mode
+
+        with col2:
+            st.markdown("### :straight_ruler: Distance Travelled")
+            st.write(step['distance'])  # Display distance for this step
+
+        with col3:
+            st.markdown("### ⏳ Approximate Duration")
+            st.write(step['duration'])  # Display estimated duration
+        
+        st.divider()  # Adds a horizontal divider between route steps
+
+     
+
+
+
      
 
