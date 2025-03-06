@@ -276,11 +276,9 @@ vehicle_type = st.selectbox(":train2: Select Vehicle Type", VEHICLE_TYPES)
 
 if vehicle_type in ["Passenger", "Minivan", "SUV"]:
     fuel_type = st.radio(":fuelpump: Select Fuel Type", FUEL_TYPES, horizontal=True)
+    num_passengers = st.number_input("Number of Passengers", min_value=1, max_value=6, value=1)
 else:
     fuel_type = None  # Fuel type is not needed for public transport
-
-# Select number of passengers in vehicle
-num_passengers = st.number_input("Number of Passengers", min_value=1, max_value=6, value=1)
 
 # Add a button to reset the zoom level
 st.button("Reset Zoom", on_click=reset_map)
