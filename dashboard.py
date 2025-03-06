@@ -7,6 +7,8 @@ import math
 from folium.plugins import Geocoder
 from folium.plugins import LocateControl
 from geopy.geocoders import Nominatim
+from backend import calculate_emissions
+import json
 
 import streamlit as st
 import googlemaps
@@ -55,24 +57,15 @@ OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
 # Initialize Google Maps API client
 gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 
-# vehicle types  & emission factors (g/km) -> ADD VALUES FROM MODEL
-VEHICLE_TYPES = {
-    "Passenger": 170,
-    "Minivan": 128,
-    "SUV": 31,
-    "Public Transit (e.g., Bus, Skytrain, Seabus, etc.)": 234
-}
+with open('data/emissions_data.json', 'r') as f:
+    data = json.load(f)
 
-# fuel types  # DO WE NEED THIS TO BE DICTIONARY?!
-FUEL_TYPES = {
-    "Gasoline": 170,
-    "Diesel": 128,
-    "Natural Gas": 31,
-    "CH": 234,
-    "ZEV": 123,
-    "BEV": 456,
-    "PHEV": 93,
-}
+# Extract unique vehicle types and fuel types
+vehicle_types = {entry['Vehicle Type'] for entry in data}
+fuel_types = {entry['Fuel Type'] for entry in data}
+
+VEHICLE_TYPES = list(vehicle_types)
+FUEL_TYPES = list(fuel_types)
 
 # Function to calculate Haversine distance (in km)
 def haversine(lat1, lon1, lat2, lon2):
@@ -223,13 +216,20 @@ with col2:
 st.button("Clear Current Selected Locations", on_click=reset_map)
 
 # Select vehicle type
-vehicle_type = st.selectbox(":train2: Select Vehicle Type", list(VEHICLE_TYPES.keys()))
+vehicle_type = st.selectbox(":train2: Select Vehicle Type", VEHICLE_TYPES)
 
 # Only show fuel type if NOT using public transport
-if vehicle_type not in ["Public Transit (e.g., Bus, Skytrain, Seabus, etc.)"]:
-    fuel_type = st.radio(":fuelpump: Select Fuel Type", list(FUEL_TYPES.keys()), horizontal=True)
+
+if vehicle_type not in ["Skytrain", "Bus", "Seabus"]:
+    fuel_type = st.radio(":fuelpump: Select Fuel Type", FUEL_TYPES, horizontal=True)
 else:
     fuel_type = None  # Fuel type is not needed for public transport
+
+# Select number of passengers in vehicle
+num_passengers = st.number_input("Number of Passengers", min_value=1, max_value=6, value=1)
+
+# Add a button to reset the zoom level
+st.button("Reset Zoom", on_click=reset_map)
 
 # Button to calculate emissions
 if st.button("Calculate Emissions"):
@@ -240,17 +240,23 @@ if st.button("Calculate Emissions"):
         # Calculate distance using Haversine formula
         distance = haversine(start_coords[0], start_coords[1], end_coords[0], end_coords[1])
 
-        # Calculate emissions # need to fix -> how are we recording the different emission rates?
-        emission_factor = VEHICLE_TYPES[vehicle_type]
-        emissions = (distance * emission_factor) / 1000  # Convert g to kg CO2
+        # Calculate emissions using the new function
+        try:
+            emissions_per_passenger = calculate_emissions(vehicle_type, fuel_type, distance, num_passengers)
+            emissions_in_kg = emissions_per_passenger / 1000  # Convert g to kg CO₂
 
-        # AI-generated feedback
-        ai_feedback = get_ai_feedback(distance, emissions, vehicle_type)
+            # AI-generated feedback
+            # ai_feedback = get_ai_feedback(distance, emissions, vehicle_type)
 
-        # Display results
-        st.success(f":straight_ruler: Distance: {distance:.2f} km")
-        st.success(f":dash: CO₂ Emissions: {emissions:.2f} kg")
-        st.info(f":robot_face: AI Feedback: {ai_feedback}")
+            # Store results in session state
+            st.session_state['emissions'] = emissions_in_kg
+            st.session_state['distance'] = distance
+
+            # Display results
+            # st.success(f":straight_ruler: Distance: {distance:.2f} km")
+            # st.success(f":dash: CO₂ Emissions per Passenger: {emissions_in_kg:.2f} kg")
+        except ValueError as e:
+            st.error(f"Error: {e}")
 
         # Update map with route
         m = folium.Map(location=start_coords, zoom_start=INITIAL_ZOOM)
@@ -261,5 +267,8 @@ if st.button("Calculate Emissions"):
         st_folium(m, height=700, width=1200)
     else:
         st.error("Please select both a start and end location on the map.")
-
         
+if 'emissions' in st.session_state:
+    st.write(f"Emissions: {st.session_state['emissions']:.2f} kg per passenger")
+    st.write(f"Distance: {st.session_state['distance']:.2f} km")        
+

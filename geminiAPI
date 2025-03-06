@@ -9,6 +9,13 @@ GEMINI_API_KEY = "AIzaSyAlVaddDZPEljFsSzydrz7uKrGqo69Q1uU"
 # Initialize Gemini AI
 genai.configure(api_key=GEMINI_API_KEY)
 
+# # List all available models
+# models = genai.list_models()
+
+# # Print the available models
+# for model in models:
+#     print(model)
+
 def get_coordinates(address):
     """Fetch latitude and longitude for a given address."""
     url = f"https://maps.googleapis.com/maps/api/geocode/json?address={address}&key={GOOGLE_MAPS_API_KEY}"
@@ -90,7 +97,7 @@ def get_ai_feedback(travel_data):
     prompt += "Provide an overall assessment of user's journey, considering efficiency and environmental impact based on the kilogram of CO2 emitted from using the transportation modes. Do not include infrastructure recommendations for improvement but include how can the user emit less emission by providing alternative routes or modes of transportation. Also present the kg of co2 emitted using the modes of transportation in a clean format followed by the feedback"
 
     # Call Gemini AI
-    model = genai.GenerativeModel("gemini-pro")
+    model = genai.GenerativeModel('gemini-2.0-flash-lite-001')
     response = model.generate_content(prompt)
 
     return response.text
