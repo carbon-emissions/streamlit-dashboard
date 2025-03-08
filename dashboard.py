@@ -333,18 +333,18 @@ if 'emissions' in st.session_state and st.session_state['emissions'] is not None
     with col1:
         # Green card for emissions with red first line and black second line
         st.markdown(f"""
-        <div style="background-color: #AFE1AF; padding: 30px; text-align: center; border-radius: 10px; font-size: 28px;">
-            <span style="color: #FF3131;">{st.session_state['emissions']:.2f} kg CO2e</span>
-            <div style="color: black; font-size: 16px; margin-top: 10px;">Average Emissions for your trip</div>
+        <div style="background-color: #AFE1AF; padding: 30px; text-align: center; border-radius: 10px; font-size: 28px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); transition: 0.3s;">
+            <span style="color: #FF3131; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">{st.session_state['emissions']:.2f} kg CO2e</span>
+            <div style="color: black; font-size: 16px; margin-top: 10px; font-weight: bold;">Average Emissions for your trip</div>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
         # Green card for distance with red first line and black second line
         st.markdown(f"""
-        <div style="background-color: #AFE1AF; padding: 30px; text-align: center; border-radius: 10px; font-size: 28px;">
-            <span style="color: #FF3131;">{st.session_state['distance']:.2f} km</span>
-            <div style="color: black; font-size: 16px; margin-top: 10px;">Travel distance in the selected mode of transport</div>
+        <div style="background-color: #AFE1AF; padding: 30px; text-align: center; border-radius: 10px; font-size: 28px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); transition: 0.3s;">
+            <span style="color: #FF3131; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">{st.session_state['distance']:.2f} km</span>
+            <div style="color: black; font-size: 16px; margin-top: 10px; font-weight: bold;">Travel distance in the selected mode of transport</div>
         </div>
         """, unsafe_allow_html=True)
 
