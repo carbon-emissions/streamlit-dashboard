@@ -31,18 +31,18 @@ st.set_page_config(page_title="CO₂de Red", layout="wide")
 #     </div>
 # """, unsafe_allow_html=True)
 
-# col1, col2 = st.columns([0.05, 0.95])  # First column 5%, second 95%
-# with col1:
-#     st.image("content/logo.png", use_container_width=False, width=75)
-# with col2:
-#     st.markdown("""
-#         <h1 style="text-align: left; margin-left: -20px; font-size: 48px; color: #8A0000;">CO₂de Red</h1>""", unsafe_allow_html=True)
+col1, col2 = st.columns([0.05, 0.95])  # First column 5%, second 95%
+with col1:
+    st.image("content/logo_updated.png", use_container_width=False, width=40)
+with col2:
+    st.markdown("""
+        <h1 style="text-align: left; margin-left: -20px; font-size: 50px; color: #A32603;">CO₂DE Red</h1>""", unsafe_allow_html=True)
 
 
 
-st.image("content/logo.png", use_container_width=False, width=75)
+# st.image("content/logo.png", use_container_width=False, width=75)
 
-st.markdown("<h1 style='text-align: center;'>CO₂de Red</h1>", unsafe_allow_html=True)
+# st.markdown("<h1 style='text-align: center;'>CO₂de Red</h1>", unsafe_allow_html=True)
 
 st.write("Enter or click on the map to set your start and end locations.")
 
