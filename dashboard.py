@@ -216,7 +216,7 @@ if "encoded_polyline" in st.session_state and st.session_state["encoded_polyline
     folium.PolyLine(decoded_polyline, color="blue", weight=5, opacity=0.8).add_to(m)
 
 # Clickable Map
-map_data = st_folium(m, height=500, width=1400)
+map_data = st_folium(m, height=500, use_container_width=True)
 
 # If a new point is clicked, update start or end point
 if map_data and map_data.get("last_clicked"):
@@ -256,18 +256,37 @@ if vehicle_type != st.session_state["last_vehicle_type"]:
     st.session_state.pop("distance", None)
     st.session_state.pop("route_data", None)
     st.session_state.pop("encoded_polyline", None)
+    st.session_state.pop("last_fuel_type", None)  # Reset fuel type tracking
+    st.session_state.pop("last_num_passengers", None)  # Reset num passengers tracking
     st.rerun()  # Force a rerun to clear old data
 
 # Only show fuel type if NOT using public transport
-
 if vehicle_type in ["Passenger", "Minivan", "SUV"]:
     fuel_type = st.radio(":fuelpump: Select Fuel Type", FUEL_TYPES, horizontal=True)
     num_passengers = st.number_input("Number of Passengers", min_value=1, max_value=6, value=1)
+
+    # Track changes in fuel type and num passengers
+    if "last_fuel_type" not in st.session_state:
+        st.session_state["last_fuel_type"] = fuel_type
+    if "last_num_passengers" not in st.session_state:
+        st.session_state["last_num_passengers"] = num_passengers
+
+    if fuel_type != st.session_state["last_fuel_type"] or num_passengers != st.session_state["last_num_passengers"]:
+        st.session_state["last_fuel_type"] = fuel_type  # Update last selected fuel type
+        st.session_state["last_num_passengers"] = num_passengers  # Update last num passengers
+        st.session_state.pop("emissions", None)
+        st.session_state.pop("distance", None)
+        st.session_state.pop("route_data", None)
+        st.session_state.pop("encoded_polyline", None)
+        st.rerun()  # Force a rerun if fuel type or num passengers changed
+
 else:
     fuel_type = None  # Fuel type is not needed for public transport
+    num_passengers = 1
 
-# Add a button to reset the zoom level
-st.button("Reset Zoom", on_click=reset_zoom)
+# BUTTON NOT WORKING SO CURRENTLY REMOVED
+# # Add a button to reset the zoom level
+# st.button("Reset Zoom", on_click=reset_zoom)
 
 # Button to calculate emissions
 if st.button("Calculate Emissions"):
@@ -397,8 +416,9 @@ if 'route_data' in st.session_state and st.session_state['route_data'] is not No
         
         st.divider()
         
+    start_location = get_place_name(st.session_state['start_coords'][0], st.session_state['start_coords'][1])
+    end_location = get_place_name(st.session_state['end_coords'][0], st.session_state['end_coords'][1])
+    vehicle = vehicle_type
 
-     
-
-    feedback = get_ai_feedback(st.session_state['route_data'])
-    st.markdown(f'<p class="large-font">{feedback}</p>', unsafe_allow_html=True)
+    feedback = get_ai_feedback(start_location, end_location, st.session_state['route_data'], vehicle, fuel_type, num_passengers)
+    st.markdown(feedback)
